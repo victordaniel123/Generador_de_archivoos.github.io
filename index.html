@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Reporte RIT</title>
+<script src="pizzip.min.js"></script>
+<script src="docxtemplater.js"></script>
+<script src="jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #EEF1EF;
+    --paper: #FFFFFF;
+    --ink: #1B2430;
+    --ink-soft: #5B6672;
+    --line: #D7DCDA;
+    --teal: #2E6F6B;
+    --teal-dark: #204E4B;
+    --amber: #D9822B;
+    --amber-soft: #FBEBD9;
+    --danger: #B3432B;
+    --ok: #2E6F6B;
+    --radius: 10px;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    font-family: var(--sans);
+    background: var(--bg);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 32px;
+    color: var(--ink);
+    padding: 28px 16px 140px;
+  }
+
+  .wrap{ max-width: 640px; margin: 0 auto; }
+
+  .masthead{
+    background: var(--ink);
+    color: #fff;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 18px 22px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .masthead .title{ font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+  .masthead .title span{ color: var(--amber); }
+  .masthead .tag{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #C7CED3;
+    border: 1px solid #3A4553;
+    border-radius: 4px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+
+  .card{
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    padding: 4px 22px 22px;
+  }
+
+  .hint{
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: var(--amber-soft);
+    border-left: 3px solid var(--amber);
+    padding: 10px 12px;
+    margin: 18px 0;
+    border-radius: 0 4px 4px 0;
+    line-height: 1.45;
+  }
+
+  .template-box{
+    margin: 18px 0 6px;
+    padding: 14px;
+    border: 1.5px dashed #B9C2C4;
+    border-radius: 8px;
+    background: #FAFBFB;
+  }
+  .template-box .row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .template-box label.eyebrow{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .3px;
+    color: var(--ink-soft);
+    display:block;
+    margin-bottom: 8px;
+  }
+  .template-status{
+    font-size: 13px;
+    color: var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .template-status .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:#C9C2A3; flex:none;
+  }
+  .template-status.ready .dot{ background: var(--teal); }
+  .template-status.ready{ color: var(--teal-dark); font-weight: 600; }
+  .template-status.error .dot{ background: var(--danger); }
+  .template-status.error{ color: var(--danger); font-weight: 600; }
+
+  .link-btn{
+    background:none; border:none; color: var(--teal-dark);
+    font-size: 12.5px; font-weight: 700; text-decoration: underline;
+    cursor:pointer; padding:0; flex:none;
+  }
+  .template-note{
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.4;
+    display:none;
+  }
+  .template-note.show{ display:block; }
+  #plantillaManual{ margin-top:10px; font-size: 13px; display:none; }
+  #plantillaManual.show{ display:block; }
+
+  .lib-status{
+    font-size: 12.5px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #F4F5F4;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+  .lib-status.ok{ color: var(--teal-dark); background:#EAF2F1; }
+  .lib-status.err{ color: var(--danger); background:#FBEDE8; }
+
+  section.group{ margin-top: 26px; }
+  .group-head{
+    display:flex; align-items: baseline; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .group-num{
+    font-family: var(--mono); font-size: 12px; color: var(--teal);
+    border: 1px solid var(--teal); border-radius: 50%;
+    width: 20px; height: 20px;
+    display:flex; align-items:center; justify-content:center; flex: none;
+  }
+  .group-head h3{ margin:0; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+  .grid .full{ grid-column: 1 / -1; }
+
+  .field{ display:flex; flex-direction: column; }
+  .field label{ font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .field label .req{ color: var(--danger); margin-left: 2px; }
+
+  input, textarea{
+    font-family: var(--sans); font-size: 14.5px; color: var(--ink);
+    background: #fff; border: 1.5px solid var(--line); border-radius: 6px;
+    padding: 9px 10px; width: 100%;
+  }
+  #folio, #reporte{ font-family: var(--mono); font-size: 13.5px; }
+
+  input:focus, textarea:focus{
+    outline: none; border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(46,111,107,0.14);
+  }
+  #reporte:focus{ box-shadow: 0 0 0 3px rgba(217,130,43,0.18); border-color: var(--amber); }
+
+  textarea{ resize: vertical; min-height: 76px; }
+
+  .timeline{ position: relative; display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .timeline::before{
+    content:""; position:absolute; top: 9px; left: 6%; right: 6%;
+    height: 2px; background: var(--line); z-index: 0;
+  }
+  .tstep{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .tdot{ width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 2px solid var(--teal); margin-bottom: 8px; }
+  .tstep label{ font-size: 11.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+  .tstep input{ text-align:center; padding: 8px 6px; font-size: 13px; }
+
+  /* Imágenes */
+  .img-add-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background: #fff; border: 1.5px dashed var(--teal);
+    color: var(--teal-dark); font-weight: 700; font-size: 13.5px;
+    border-radius: 8px; padding: 10px 14px; cursor:pointer;
+  }
+  .img-add-btn:hover{ background: #F1F6F5; }
+  .img-add-btn .plus{
+    font-size: 16px; line-height:1; font-weight: 800;
+  }
+  #imagenesInput{ display:none; }
+
+  .img-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 10px; margin-top: 14px;
+  }
+  .img-thumb{
+    position: relative; border: 1.5px solid var(--line); border-radius: 8px;
+    overflow: hidden; aspect-ratio: 1 / 1; background: #F4F5F4;
+  }
+  .img-thumb img{ width:100%; height:100%; object-fit: cover; display:block; }
+  .img-thumb .rm{
+    position:absolute; top:4px; right:4px;
+    width:20px; height:20px; border-radius:50%;
+    background: rgba(27,36,48,0.75); color:#fff; border:none;
+    font-size: 13px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .img-thumb .num{
+    position:absolute; bottom:4px; left:4px;
+    background: rgba(27,36,48,0.75); color:#fff;
+    font-family: var(--mono); font-size: 10.5px;
+    border-radius: 3px; padding: 1px 5px;
+  }
+  .img-empty{ font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; }
+
+  .btn-pdf{
+    margin-top: 16px;
+    background: var(--amber);
+    color: #fff; border:none; border-radius: 8px;
+    padding: 12px 18px; font-size: 14.5px; font-weight: 700;
+    cursor:pointer; width: 100%;
+  }
+  .btn-pdf:hover{ background:#C06F1E; }
+  .btn-pdf:disabled{ background:#C9C2A3; cursor:not-allowed; }
+
+  @media (max-width: 520px){
+    .grid{ grid-template-columns: 1fr; }
+    .timeline{ grid-template-columns: 1fr 1fr; gap: 16px 10px; }
+    .timeline::before{ display:none; }
+  }
+
+  .actions{
+    position: sticky; bottom: 14px; margin-top: 30px;
+    display:flex; justify-content:center;
+  }
+  .btn-generar{
+    width: 100%; max-width: 460px;
+    background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 15px 20px; font-size: 15.5px; font-weight: 700; letter-spacing: .2px;
+    cursor: pointer; box-shadow: 0 6px 18px rgba(27,36,48,0.18);
+    transition: background .15s ease, transform .1s ease;
+  }
+  .btn-generar:hover{ background: var(--teal-dark); }
+  .btn-generar:active{ transform: translateY(1px); }
+  .btn-generar:disabled{ background: #A9B3B1; cursor: not-allowed; box-shadow:none; }
+
+  .status{ max-width: 640px; margin: 12px auto 0; font-size: 13.5px; text-align:center; min-height: 18px; }
+  .status.ok{ color: var(--ok); font-weight: 600; }
+  .status.err{ color: var(--danger); font-weight: 600; }
+  .status.pdf-ok{ color: #A6631A; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="masthead">
+      <div class="title">Reporte <span>RIT</span></div>
+      <div class="tag" id="folioTag">SIN FOLIO</div>
+    </div>
+
+    <div class="card">
+      <div class="hint">
+        Los campos vacíos quedan en blanco dentro del Word. Orden de horas: Traslado → Llegada → Inicio → Término. El Word y el PDF de imágenes se nombran con el número de reporte / caso.
+      </div>
+
+      <div class="template-box">
+        <label class="eyebrow">Plantilla de Word</label>
+        <div class="row">
+          <div class="template-status" id="templateStatus"><span class="dot"></span>Buscando Plantilla.docx en esta carpeta…</div>
+          <button type="button" class="link-btn" id="btnCambiarPlantilla">usar otro archivo</button>
+        </div>
+        <div class="template-note" id="templateNote"></div>
+        <div id="plantillaManual">
+          <input type="file" id="plantillaWord" accept=".docx">
+        </div>
+        <div class="lib-status" id="libStatus">Verificando librerías locales…</div>
+      </div>
+
+      <form id="formRIT">
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">1</span><h3>Datos generales</h3></div>
+          <div class="grid">
+            <div class="field full">
+              <label for="tecnico">Técnico</label>
+              <input type="text" id="tecnico" value="Victor Daniel Ramirez Delgado">
+            </div>
+            <div class="field">
+              <label for="folio">Folio</label>
+              <input type="text" id="folio" placeholder="2728007002747">
+            </div>
+            <div class="field">
+              <label for="reporte">N.° de reporte / caso <span class="req">*</span></label>
+              <input type="text" id="reporte" placeholder="IMGFS869511-002">
+            </div>
+            <div class="field">
+              <label for="fecha">Fecha</label>
+              <input type="date" id="fecha">
+            </div>
+            <div class="field">
+              <label for="hora">Hora</label>
+              <input type="time" id="hora">
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">2</span><h3>Datos del sitio</h3></div>
+          <div class="grid">
+            <div class="field">
+              <label for="cliente">Cliente</label>
+              <input type="text" id="cliente" placeholder="Santander">
+            </div>
+            <div class="field">
+              <label for="sucursal">Sucursal</label>
+              <input type="text" id="sucursal" placeholder="H. Ayuntamiento">
+            </div>
+            <div class="field">
+              <label for="poblacion">Población</label>
+              <input type="text" id="poblacion" placeholder="Acapulco">
+            </div>
+            <div class="field">
+              <label for="cnoc">CNOC</label>
+              <input type="text" id="cnoc" placeholder="Cuauhtémoc">
+            </div>
+            <div class="field full">
+              <label for="direccion">Dirección</label>
+              <input type="text" id="direccion" placeholder="Carretera Cayaco - Puerto Marqués">
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">3</span><h3>Falla y descripción</h3></div>
+          <div class="grid">
+            <div class="field full">
+              <label for="falla">Falla reportada</label>
+              <input type="text" id="falla" placeholder="Sin servicio en el cajero">
+            </div>
+            <div class="field full">
+              <label for="descripcion">Descripción / notas</label>
+              <textarea id="descripcion" placeholder="Descripción detallada de la falla o notas adicionales..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">4</span><h3>Registro de horas</h3></div>
+          <div class="timeline">
+            <div class="tstep"><div class="tdot"></div><label for="traslado">Traslado</label><input type="time" id="traslado"></div>
+            <div class="tstep"><div class="tdot"></div><label for="llegada">Llegada</label><input type="time" id="llegada"></div>
+            <div class="tstep"><div class="tdot"></div><label for="inicio">Inicio</label><input type="time" id="inicio"></div>
+            <div class="tstep"><div class="tdot"></div><label for="termino">Término</label><input type="time" id="termino"></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">5</span><h3>Imágenes del reporte</h3></div>
+
+          <button type="button" class="img-add-btn" id="btnAgregarImagen">
+            <span class="plus">+</span> Agregar imagen
+          </button>
+          <input type="file" id="imagenesInput" accept="image/*,.jpg,.jpeg,.jfif,.pjpeg,.pjp,.png,.gif,.webp,.bmp,.heic,.heif" multiple>
+
+          <div class="img-grid" id="imgGrid"></div>
+          <div class="img-empty" id="imgEmpty">Sin imágenes agregadas todavía.</div>
+
+          <button type="button" class="btn-pdf" id="btnGenerarPdf" onclick="generarPdf()">Aceptar: generar PDF con las imágenes</button>
+        </section>
+
+      </form>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-generar" id="btnGenerar" onclick="generarWord()">Generar Word lleno</button>
+    </div>
+    <div class="status" id="status"></div>
+
+  </div>
+
+<script>
+  /* ============================================================
+     Verificación de librerías locales (PizZip, docxtemplater, jsPDF)
+     ============================================================ */
+  function obtenerJsPDF() {
+    // Distintas versiones/builds de jsPDF exponen el constructor en
+    // rutas distintas. Se comprueban todas antes de rendirse.
+    if (window.jspdf && typeof window.jspdf.jsPDF === 'function') return window.jspdf.jsPDF;
+    if (typeof window.jsPDF === 'function') return window.jsPDF;
+    if (window.jspdf && window.jspdf.default && typeof window.jspdf.default.jsPDF === 'function') return window.jspdf.default.jsPDF;
+    return null;
+  }
+
+  function verificarLibrerias() {
+    const el = document.getElementById('libStatus');
+    const faltantes = [];
+    if (typeof window.PizZip !== 'function' && typeof window.PizZip !== 'object') faltantes.push('pizzip.min.js');
+    if (typeof window.docxtemplater === 'undefined') faltantes.push('docxtemplater.js');
+    if (!obtenerJsPDF()) faltantes.push('jspdf.umd.min.js');
+
+    if (faltantes.length === 0) {
+      el.textContent = '✓ Librerías locales cargadas correctamente (PizZip, docxtemplater, jsPDF).';
+      el.className = 'lib-status ok';
+    } else {
+      el.innerHTML = '⚠️ No se cargó: <b>' + faltantes.join(', ') + '</b>. ' +
+        'Verifica que el archivo exista, tenga exactamente ese nombre, esté en la misma carpeta que este HTML, ' +
+        'y que no esté vacío o dañado. Si abriste este archivo con doble clic (file://), algunos navegadores ' +
+        'bloquean la carga de scripts locales; prueba con "python -m http.server" en esta carpeta y entra a ' +
+        'http://localhost:8000/index.html.';
+      el.className = 'lib-status err';
+    }
+  }
+
+  // Espera a que la ventana termine de cargar todos los <script src="..."> antes de verificar.
+  window.addEventListener('load', verificarLibrerias);
+
+  /* ============================================================
+     Carga automática de Plantilla.docx desde la misma carpeta
+     ============================================================ */
+  let plantillaBuffer = null; // ArrayBuffer listo para usarse
+  const NOMBRE_PLANTILLA = 'Plantilla.docx';
+
+  function setTemplateStatus(text, kind){
+    const el = document.getElementById('templateStatus');
+    el.innerHTML = '<span class="dot"></span>' + text;
+    el.className = 'template-status' + (kind ? ' ' + kind : '');
+  }
+
+  async function cargarPlantillaAutomatica() {
+    try {
+      const resp = await fetch(NOMBRE_PLANTILLA, { cache: 'no-store' });
+      if (!resp.ok) throw new Error('No se encontró ' + NOMBRE_PLANTILLA);
+      plantillaBuffer = await resp.arrayBuffer();
+      setTemplateStatus('✓ ' + NOMBRE_PLANTILLA + ' cargada automáticamente', 'ready');
+    } catch (err) {
+      setTemplateStatus('No se pudo cargar ' + NOMBRE_PLANTILLA + ' automáticamente', 'error');
+      const note = document.getElementById('templateNote');
+      note.textContent = 'Esto suele pasar al abrir el archivo con doble clic (file://). Abre esta carpeta con un servidor local, por ejemplo ejecutando "python -m http.server" dentro de GeneradorRIT y entrando a http://localhost:8000/index.html — o usa "usar otro archivo" para seleccionar la plantilla manualmente.';
+      note.classList.add('show');
+      document.getElementById('plantillaManual').classList.add('show');
+    }
+  }
+
+  document.getElementById('btnCambiarPlantilla').addEventListener('click', function(){
+    document.getElementById('plantillaManual').classList.add('show');
+    document.getElementById('plantillaWord').click();
+  });
+
+  document.getElementById('plantillaWord').addEventListener('change', function(){
+    if (!this.files.length) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      plantillaBuffer = e.target.result;
+      setTemplateStatus('✓ Plantilla manual: ' + document.getElementById('plantillaWord').files[0].name, 'ready');
+      document.getElementById('templateNote').classList.remove('show');
+    };
+    reader.readAsArrayBuffer(this.files[0]);
+  });
+
+  cargarPlantillaAutomatica();
+
+  /* ============================================================
+     Folio badge
+     ============================================================ */
+  document.getElementById('folio').addEventListener('input', function(){
+    document.getElementById('folioTag').textContent = this.value ? this.value : 'SIN FOLIO';
+  });
+
+  function setStatus(msg, kind){
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function nombreDeArchivoSeguro(texto) {
+    return texto.trim().replace(/[\\\/:*?"<>|]+/g, '-');
+  }
+
+  /* ============================================================
+     Datos del formulario (igual que antes)
+     ============================================================ */
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? (el.value || "") : "";
+  }
+
+  function obtenerDatos() {
+    const tecnico = val('tecnico');
+    const fecha = val('fecha');
+    const hora = val('hora');
+    const folio = val('folio');
+    const reporte = val('reporte');
+    const cliente = val('cliente');
+    const sucursal = val('sucursal');
+    const poblacion = val('poblacion');
+    const direccion = val('direccion');
+    const cnoc = val('cnoc');
+    const falla = val('falla');
+    const descripcion = val('descripcion');
+    const traslado = val('traslado');
+    const llegada = val('llegada');
+    const inicio = val('inicio');
+    const termino = val('termino');
+
+    return {
+      tecnico, fecha, hora, folio, reporte, cliente, sucursal, poblacion,
+      direccion, cnoc, falla, descripcion, traslado, llegada, inicio, termino,
+
+      Tecnico: tecnico, Fecha: fecha, Hora: hora, Folio: folio, Reporte: reporte,
+      Cliente: cliente, Sucursal: sucursal, Poblacion: poblacion, Direccion: direccion,
+      Cnoc: cnoc, Falla: falla, Descripcion: descripcion, Traslado: traslado,
+      Llegada: llegada, Inicio: inicio, Termino: termino,
+
+      tecnico_nombre: tecnico, num_reporte: reporte, num_folio: folio,
+      hora_traslado: traslado, hora_llegada: llegada, hora_inicio: inicio,
+      hora_termino: termino, hora_term: termino, fall: falla, desc: descripcion
+    };
+  }
+
+  function descargarArchivo(blob, nombreArchivo) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  /* ============================================================
+     Generar Word
+     ============================================================ */
+  function generarWord() {
+    const btn = document.getElementById('btnGenerar');
+
+    if (!plantillaBuffer) {
+      setStatus('⚠️ No hay plantilla cargada. Selecciónala con "usar otro archivo".', 'err');
+      return;
+    }
+
+    const datos = obtenerDatos();
+
+    if (!datos.reporte) {
+      setStatus('⚠️ Ingresa el número de reporte / caso: se usa como nombre del archivo.', 'err');
+      document.getElementById('reporte').focus();
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus('Generando documento…');
+
+    try {
+      // .slice(0) por si se reutiliza el mismo ArrayBuffer más de una vez
+      const zip = new PizZip(plantillaBuffer.slice(0));
+
+      const doc = new docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        nullGetter: function() { return ""; }
+      });
+
+      doc.render(datos);
+      const out = doc.getZip().generate({
+        type: "blob",
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+
+      const nombreArchivo = nombreDeArchivoSeguro(datos.reporte) + '.docx';
+      descargarArchivo(out, nombreArchivo);
+      setStatus('✅ Word generado: ' + nombreArchivo, 'ok');
+    } catch (error) {
+      let msg = error.message;
+      if (msg.includes("Could not find")) {
+        msg = "No se encontró la etiqueta en la plantilla. Revisa que el nombre sea exacto.";
+      } else if (msg.includes("invalid xml")) {
+        msg = "El archivo Word tiene problemas. Abre la plantilla en Word, quita los espacios dentro de las llaves de las etiquetas y guarda de nuevo.";
+      }
+      setStatus('❌ Error al generar el Word: ' + msg, 'err');
+      console.error(error);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ============================================================
+     Imágenes -> PDF
+     ============================================================ */
+  let imagenes = []; // { dataUrl, width, height, name }
+
+  document.getElementById('btnAgregarImagen').addEventListener('click', function(){
+    document.getElementById('imagenesInput').click();
+  });
+
+  document.getElementById('imagenesInput').addEventListener('change', async function(){
+    const files = Array.from(this.files || []);
+    const fallidas = [];
+    for (const file of files) {
+      try {
+        const procesada = await procesarImagen(file);
+        imagenes.push(procesada);
+      } catch (err) {
+        console.error('No se pudo leer una imagen:', file.name, err);
+        fallidas.push(file.name);
+      }
+    }
+    this.value = ''; // permite volver a elegir la misma imagen si se borró
+    renderImagenes();
+    if (fallidas.length) {
+      setStatus('⚠️ No se pudieron leer estas imágenes (formato no soportado por el navegador): ' + fallidas.join(', '), 'err');
+    }
+  });
+
+  function procesarImagen(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e){
+        const img = new Image();
+        img.onload = function(){
+          // Redibuja en canvas para normalizar el formato a JPEG.
+          // Esto funciona igual para .jpg, .jpeg, .jfif, .png, .webp,
+          // .gif y .bmp, porque el navegador detecta el formato real
+          // por el contenido del archivo, no por la extensión.
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          resolve({
+            dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            name: file.name
+          });
+        };
+        img.onerror = function(){
+          reject(new Error('El navegador no pudo decodificar "' + file.name + '". Puede ser un formato no soportado (p. ej. HEIC/HEIF) o el archivo está dañado.'));
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderImagenes() {
+    const grid = document.getElementById('imgGrid');
+    const empty = document.getElementById('imgEmpty');
+    grid.innerHTML = '';
+
+    if (!imagenes.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    imagenes.forEach((img, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'img-thumb';
+      thumb.innerHTML =
+        '<img src="' + img.dataUrl + '" alt="">' +
+        '<span class="num">' + (idx + 1) + '</span>' +
+        '<button type="button" class="rm" title="Quitar">×</button>';
+      thumb.querySelector('.rm').addEventListener('click', () => {
+        imagenes.splice(idx, 1);
+        renderImagenes();
+      });
+      grid.appendChild(thumb);
+    });
+  }
+
+  function generarPdf() {
+    const btn = document.getElementById('btnGenerarPdf');
+
+    const JsPdfCtor = obtenerJsPDF();
+    if (!JsPdfCtor) {
+      setStatus('❌ No se encontró la librería jsPDF (jspdf.umd.min.js). Revisa el panel "Verificando librerías locales" arriba: el archivo debe llamarse exactamente jspdf.umd.min.js, estar en esta misma carpeta, y ser el build UMD (no el módulo ES ni el de solo tipos).', 'err');
+      return;
+    }
+
+    if (!imagenes.length) {
+      setStatus('⚠️ Agrega al menos una imagen antes de generar el PDF.', 'err');
+      return;
+    }
+
+    const reporte = val('reporte');
+    if (!reporte) {
+      setStatus('⚠️ Ingresa el número de reporte / caso: se usa como nombre del PDF.', 'err');
+      document.getElementById('reporte').focus();
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus('Generando PDF…');
+
+    try {
+      const pdf = new JsPdfCtor({ unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+
+      imagenes.forEach((img, idx) => {
+        if (idx > 0) pdf.addPage();
+
+        // Ajusta la imagen al tamaño completo de la hoja, centrada,
+        // sin recortarse ni salir de los bordes (mantiene proporción).
+        const imgRatio = img.width / img.height;
+        const pageRatio = pageW / pageH;
+        let renderW, renderH;
+        if (imgRatio > pageRatio) {
+          renderW = pageW;
+          renderH = pageW / imgRatio;
+        } else {
+          renderH = pageH;
+          renderW = pageH * imgRatio;
+        }
+        const x = (pageW - renderW) / 2;
+        const y = (pageH - renderH) / 2;
+        pdf.addImage(img.dataUrl, 'JPEG', x, y, renderW, renderH);
+      });
+
+      const nombreArchivo = nombreDeArchivoSeguro(reporte) + '.pdf';
+      pdf.save(nombreArchivo);
+      setStatus('✅ PDF generado: ' + nombreArchivo, 'pdf-ok');
+    } catch (error) {
+      setStatus('❌ Error al generar el PDF: ' + error.message, 'err');
+      console.error(error);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
