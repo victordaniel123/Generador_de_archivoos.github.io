@@ -244,6 +244,34 @@
     .timeline::before{ display:none; }
   }
 
+  /* ============================================================
+     Escritorio: más ancho, más columnas, mejor uso del espacio.
+     El celular sigue viéndose exactamente igual que antes.
+     ============================================================ */
+  @media (min-width: 900px){
+    body{ padding: 40px 24px 120px; }
+    .wrap{ max-width: 980px; }
+    .masthead{ padding: 22px 30px; }
+    .masthead .title{ font-size: 20px; }
+    .card{ padding: 4px 30px 30px; }
+
+    .grid{ grid-template-columns: repeat(3, 1fr); gap: 16px 16px; }
+
+    .timeline{ grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+    .img-grid{ grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+
+    .actions{ justify-content: flex-end; }
+    .btn-generar{ max-width: 320px; }
+
+    .status{ max-width: 980px; text-align: right; }
+  }
+
+  @media (min-width: 1200px){
+    .wrap{ max-width: 1120px; }
+    .grid{ grid-template-columns: repeat(4, 1fr); }
+  }
+
   .actions{
     position: sticky; bottom: 14px; margin-top: 30px;
     display:flex; justify-content:center;
