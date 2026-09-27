@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Reporte GSSC - Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --bg: #EEF1EF; --paper: #FFFFFF; --ink: #1B2430; --ink-soft: #5B6672;
+    --line: #D7DCDA; --teal: #2E6F6B; --teal-dark: #204E4B; --amber: #D9822B;
+    --amber-soft: #FBEBD9; --danger: #B3432B; --ok: #2E6F6B; --radius: 10px;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0; font-family: var(--sans); background: var(--bg);
+    background-image: linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 32px; color: var(--ink); padding: 28px 16px 140px;
+  }
+  .wrap{ max-width: 640px; margin: 0 auto; }
+  .masthead{
+    background: var(--ink); color: #fff; border-radius: var(--radius) var(--radius) 0 0;
+    padding: 18px 22px; display:flex; align-items:center; justify-content: space-between; gap: 12px;
+  }
+  .masthead .title{ font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+  .masthead .title span{ color: var(--amber); }
+  .masthead-right{ display:flex; align-items:center; gap: 10px; flex: none; }
+  .masthead .tag{
+    font-family: var(--mono); font-size: 11px; color: #C7CED3; border: 1px solid #3A4553;
+    border-radius: 4px; padding: 3px 8px; white-space: nowrap;
+  }
+  .btn-goto-dos{
+    font-family: var(--sans); font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--amber); border: none; border-radius: 6px; padding: 7px 12px;
+    cursor: pointer; white-space: nowrap; transition: background .15s ease, transform .1s ease;
+  }
+  .btn-goto-dos:hover{ background: #C4741F; }
+  .btn-goto-dos:active{ transform: translateY(1px); }
+  .card{
+    background: var(--paper); border: 1px solid var(--line); border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius); padding: 4px 22px 22px;
+  }
+  .hint{
+    font-size: 13px; color: var(--ink-soft); background: var(--amber-soft);
+    border-left: 3px solid var(--amber); padding: 10px 12px; margin: 18px 0;
+    border-radius: 0 4px 4px 0; line-height: 1.45;
+  }
+  .template-box{
+    margin: 18px 0 6px; padding: 14px; border: 1.5px dashed #B9C2C4;
+    border-radius: 8px; background: #FAFBFB;
+  }
+  .template-box .row{ display:flex; align-items:center; justify-content: space-between; gap: 10px; }
+  .template-box label.eyebrow{
+    font-family: var(--mono); font-size: 11px; letter-spacing: .3px;
+    color: var(--ink-soft); display:block; margin-bottom: 8px;
+  }
+  .template-status{ font-size: 13px; color: var(--ink-soft); display:flex; align-items:center; gap: 8px; }
+  .template-status .dot{ width:8px; height:8px; border-radius:50%; background:#C9C2A3; flex:none; }
+  .template-status.ready .dot{ background: var(--teal); }
+  .template-status.ready{ color: var(--teal-dark); font-weight: 600; }
+  .template-status.error .dot{ background: var(--danger); }
+  .template-status.error{ color: var(--danger); font-weight: 600; }
+  .link-btn{
+    background:none; border:none; color: var(--teal-dark); font-size: 12.5px;
+    font-weight: 700; text-decoration: underline; cursor:pointer; padding:0; flex:none;
+  }
+  .template-note{ font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.4; display:none; }
+  .template-note.show{ display:block; }
+  #plantillaManual{ margin-top:10px; font-size: 13px; display:none; }
+  #plantillaManual.show{ display:block; }
+  .lib-status{ font-size: 12.5px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: #F4F5F4; color: var(--ink-soft); line-height: 1.4; }
+  .lib-status.ok{ color: var(--teal-dark); background:#EAF2F1; }
+  .lib-status.err{ color: var(--danger); background:#FBEDE8; }
+  section.group{ margin-top: 26px; }
+  .group-head{ display:flex; align-items: baseline; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .group-num{
+    font-family: var(--mono); font-size: 12px; color: var(--teal); border: 1px solid var(--teal);
+    border-radius: 50%; width: 20px; height: 20px; display:flex; align-items:center; justify-content:center; flex: none;
+  }
+  .group-head h3{ margin:0; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+  .grid .full{ grid-column: 1 / -1; }
+  .field{ display:flex; flex-direction: column; }
+  .field label{ font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .field label .req{ color: var(--danger); margin-left: 2px; }
+  input, textarea, select{
+    font-family: var(--sans); font-size: 14.5px; color: var(--ink); background: #fff;
+    border: 1.5px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%;
+  }
+  input:focus, textarea:focus, select:focus{ outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(46,111,107,0.14); }
+  textarea{ resize: vertical; min-height: 76px; }
+  .timeline{ position: relative; display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .timeline::before{ content:""; position:absolute; top: 9px; left: 6%; right: 6%; height: 2px; background: var(--line); z-index: 0; }
+  .tstep{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .tdot{ width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 2px solid var(--teal); margin-bottom: 8px; }
+  .tstep label{ font-size: 11.5px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+  .tstep input{ text-align:center; padding: 8px 6px; font-size: 13px; }
+  
+  .parte-row{ display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; padding: 10px; background: #FAFBFB; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; align-items: end; }
+  .parte-row .field label{ font-size: 11px; }
+  .parte-row input, .parte-row select{ font-size: 13px; padding: 7px 8px; }
+  .btn-add-parte{ background: var(--teal); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .btn-add-parte:hover{ background: var(--teal-dark); }
+  .btn-remove-parte{ background: var(--danger); color: #fff; border: none; border-radius: 4px; padding: 6px 10px; font-size: 14px; cursor: pointer; line-height: 1; }
+
+  .img-section{ margin-top: 16px; padding: 14px; background: #FAFBFB; border: 1.5px solid var(--line); border-radius: 8px; }
+  .img-section h4{ margin: 0 0 12px; font-size: 13.5px; font-weight: 700; color: var(--teal-dark); }
+  .img-add-btn{
+    display:inline-flex; align-items:center; gap:8px; background: #fff; border: 1.5px dashed var(--teal);
+    color: var(--teal-dark); font-weight: 700; font-size: 13.5px; border-radius: 8px; padding: 10px 14px; cursor:pointer; margin-bottom: 10px;
+  }
+  .img-add-btn:hover{ background: #F1F6F5; }
+  .img-add-btn .plus{ font-size: 16px; line-height:1; font-weight: 800; }
+  input[type="file"].img-input{ display:none; }
+  .img-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 10px; }
+  .img-thumb{ position: relative; border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden; aspect-ratio: 1 / 1; background: #F4F5F4; }
+  .img-thumb img{ width:100%; height:100%; object-fit: cover; display:block; }
+  .img-thumb .rm{
+    position:absolute; top:4px; right:4px; width:20px; height:20px; border-radius:50%;
+    background: rgba(27,36,48,0.75); color:#fff; border:none; font-size: 13px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .img-empty{ font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
+
+  .actions{ position: sticky; bottom: 14px; margin-top: 30px; display:flex; justify-content:center; }
+  .btn-generar{
+    width: 100%; max-width: 460px; background: var(--teal); color: #fff; border: none; border-radius: 8px;
+    padding: 15px 20px; font-size: 15.5px; font-weight: 700; letter-spacing: .2px; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(27,36,48,0.18); transition: background .15s ease, transform .1s ease;
+  }
+  .btn-generar:hover{ background: var(--teal-dark); }
+  .btn-generar:active{ transform: translateY(1px); }
+  .btn-generar:disabled{ background: #A9B3B1; cursor: not-allowed; box-shadow:none; }
+  .status{ max-width: 640px; margin: 12px auto 0; font-size: 13.5px; text-align:center; min-height: 18px; }
+  .status.ok{ color: var(--ok); font-weight: 600; }
+  .status.err{ color: var(--danger); font-weight: 600; }
+
+  @media (max-width: 520px){
+    .grid{ grid-template-columns: 1fr; }
+    .timeline{ grid-template-columns: 1fr 1fr; gap: 16px 10px; }
+    .timeline::before{ display:none; }
+    .parte-row{ grid-template-columns: 1fr; }
+    .masthead{ flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="masthead">
+      <div class="title">Reporte <span>GSSC</span> - Excel</div>
+      <div class="masthead-right">
+        <button type="button" class="btn-goto-dos" id="btnIrDos" title="Ir al generador de Word">Generar rit →</button>
+        <div class="tag" id="folioTag">SIN FOLIO</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hint">
+        Esta herramienta genera el reporte <b>{...}</b> r.
+      </div>
+
+      <div class="template-box">
+        <label class="eyebrow">Plantilla de Excel</label>
+        <div class="row">
+          <div class="template-status" id="templateStatus"><span class="dot"></span>Buscando plantilla...</div>
+          <button type="button" class="link-btn" id="btnCambiarPlantilla">usar otro archivo</button>
+        </div>
+        <div class="template-note" id="templateNote"></div>
+        <div id="plantillaManual">
+          <input type="file" id="plantillaExcel" accept=".xlsx">
+        </div>
+        <div class="lib-status" id="libStatus">Verificando librería ExcelJS...</div>
+      </div>
+
+      <form id="formGSSC">
+        <section class="group">
+          <div class="group-head"><span class="group-num">1</span><h3>Datos del sitio</h3></div>
+          <div class="grid">
+            <div class="field full"><label for="nombre_idc">Nombre IDC</label><input type="text" id="nombre_idc" placeholder="Nombre del IDC"></div>
+            <div class="field"><label for="fecha">Fecha <span class="req">*</span></label><input type="date" id="fecha"></div>
+            <div class="field"><label for="folio">Folio GS <span class="req">*</span></label><input type="text" id="folio" placeholder="73616"></div>
+            <div class="field full"><label for="central">Central</label><input type="text" id="central" placeholder="CENTRAL BALBUENA"></div>
+            <div class="field full"><label for="direccion">Dirección</label><input type="text" id="direccion" placeholder="Dirección completa del sitio"></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">2</span><h3>Datos del equipo</h3></div>
+          <div class="grid">
+            <div class="field"><label for="nombre_equipo">Hostname</label><input type="text" id="nombre_equipo" placeholder="ipdsl-chi-centauro-13"></div>
+            <div class="field"><label for="modelo">Modelo del equipo</label><input type="text" id="modelo" placeholder="ASR 9000"></div>
+            <div class="field full"><label for="hubic_equipo">Ubicación del equipo</label><input type="text" id="hubic_equipo" placeholder="Sala UniNet / Rack / Posición"></div>
+            <div class="field"><label for="telefono">Teléfono IDC</label><input type="text" id="telefono" placeholder="5554876590"></div>
+            <div class="field"><label for="hora_inicio">Hora de cita programada</label><input type="time" id="hora_inicio"></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">3</span><h3>Descripción de actividades</h3></div>
+          <div class="grid">
+            <div class="field full">
+              <label for="des_actividad">Descripción de actividades <span class="req">*</span></label>
+              <textarea id="des_actividad" placeholder="Descripción detallada de las actividades realizadas..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">4</span><h3>Cronología de actividades</h3></div>
+          <div class="timeline">
+            <div class="tstep"><div class="tdot"></div><label for="hora_de_llegada">Arribo</label><input type="time" id="hora_de_llegada"></div>
+            <div class="tstep"><div class="tdot"></div><label for="inicio_de_actividad">Inicio</label><input type="time" id="inicio_de_actividad"></div>
+            <div class="tstep"><div class="tdot"></div><label for="termino_de_la_actividad">Término</label><input type="time" id="termino_de_la_actividad"></div>
+            <div class="tstep"><div class="tdot"></div><label for="validacion">Validación</label><input type="time" id="validacion"></div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">5</span><h3>Partes / Refacciones</h3></div>
+          <div id="partesContainer">
+            <div class="parte-row">
+              <div class="field"><label>Número de parte</label><input type="text" class="parte-num" placeholder="VS-S2T-10G="></div>
+              <div class="field"><label>Número de serie</label><input type="text" class="parte-serie" placeholder="SAL1917E18T"></div>
+              <div class="field">
+                <label>Movimiento</label>
+                <select class="parte-mov">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Instalado">Instalado</option>
+                  <option value="Retirado">Retirado</option>
+                  <option value="Rollback">Rollback</option>
+                  <option value="No utilizado">No utilizado</option>
+                  <option value="Resguardo del cliente">Resguardo del cliente</option>
+                </select>
+              </div>
+              <button type="button" class="btn-remove-parte" onclick="this.parentElement.remove()" title="Eliminar">×</button>
+            </div>
+          </div>
+          <button type="button" class="btn-add-parte" id="btnAddParte">+ Agregar otra parte</button>
+          <div class="field full" style="margin-top: 14px;">
+            <label for="partes_danadas">Partes dañadas / incorrectas recibidas</label>
+            <textarea id="partes_danadas" placeholder="Número de parte / serie que llegaron dañadas o incorrectas..."></textarea>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">6</span><h3>Observaciones</h3></div>
+          <div class="grid">
+            <div class="field full">
+              <label for="observaciones">Observaciones generales</label>
+              <textarea id="observaciones" placeholder="Desacuerdos, eventos importantes con personal UniNet, notificaciones..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">7</span><h3>Reporte fotográfico - Previo</h3></div>
+          <div class="img-section">
+            <h4>Imágenes previas al servicio</h4>
+            <div class="field full" style="margin-bottom: 10px;">
+              <label for="descripcion_previa">Descripción previa</label>
+              <input type="text" id="descripcion_previa" placeholder="Estado del equipo antes del servicio...">
+            </div>
+            <button type="button" class="img-add-btn" id="btnAgregarPrevio1"><span class="plus">+</span> Imagen 1 previa</button>
+            <input type="file" id="imgInputPrevio1" class="img-input" accept="image/*">
+            <button type="button" class="img-add-btn" id="btnAgregarPrevio2"><span class="plus">+</span> Imagen 2 previa</button>
+            <input type="file" id="imgInputPrevio2" class="img-input" accept="image/*">
+            <div class="img-grid" id="imgGridPrevio"></div>
+            <div class="img-empty" id="imgEmptyPrevio">Sin imágenes previas agregadas.</div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><span class="group-num">8</span><h3>Reporte fotográfico - Posterior</h3></div>
+          <div class="img-section">
+            <h4>Imágenes posteriores al servicio</h4>
+            <div class="field full" style="margin-bottom: 10px;">
+              <label for="descripcion_posterior">Descripción posterior</label>
+              <input type="text" id="descripcion_posterior" placeholder="Estado del equipo después del servicio...">
+            </div>
+            <button type="button" class="img-add-btn" id="btnAgregarPost1"><span class="plus">+</span> Imagen 1 posterior</button>
+            <input type="file" id="imgInputPost1" class="img-input" accept="image/*">
+            <button type="button" class="img-add-btn" id="btnAgregarPost2"><span class="plus">+</span> Imagen 2 posterior</button>
+            <input type="file" id="imgInputPost2" class="img-input" accept="image/*">
+            <div class="img-grid" id="imgGridPost"></div>
+            <div class="img-empty" id="imgEmptyPost">Sin imágenes posteriores agregadas.</div>
+          </div>
+        </section>
+      </form>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn-generar" id="btnGenerar" onclick="generarExcel()">Generar Excel lleno</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+<script>
+  function verificarLibreria() {
+    const el = document.getElementById('libStatus');
+    if (typeof ExcelJS !== 'undefined') {
+      el.textContent = '✓ Librería ExcelJS cargada correctamente.';
+      el.className = 'lib-status ok';
+    } else {
+      el.innerHTML = '⚠️ No se cargó <b>exceljs.min.js</b>. Verifica tu conexión a internet.';
+      el.className = 'lib-status err';
+    }
+  }
+  window.addEventListener('load', verificarLibreria);
+
+  // Botón hacia el generador de Word (dos.html), debe estar en la misma carpeta que este archivo
+  document.getElementById('btnIrDos').addEventListener('click', () => {
+    window.location.href = 'index.html';
+  });
+
+  let plantillaBuffer = null;
+
+  // Nombres candidatos para la plantilla de Excel, en orden de intento.
+  // Ajusta esta lista con el nombre EXACTO (mayúsculas y extensión) de tu archivo
+  // dentro de la carpeta GeneradorRIT si ninguno de estos coincide.
+  const NOMBRES_PLANTILLA = [
+    'Plantilla.xlsx',
+    'PlantillaExcel.xlsx',
+    'Plantilaexcel.xlsx',
+    'plantilla.xlsx',
+    'plantillaexcel.xlsx'
+  ];
+
+  function setTemplateStatus(text, kind){
+    const el = document.getElementById('templateStatus');
+    el.innerHTML = '<span class="dot"></span>' + text;
+    el.className = 'template-status' + (kind ? ' ' + kind : '');
+  }
+
+  async function cargarPlantillaAutomatica() {
+    for (const nombre of NOMBRES_PLANTILLA) {
+      try {
+        const resp = await fetch(nombre, { cache: 'no-store' });
+        if (resp.ok) {
+          plantillaBuffer = await resp.arrayBuffer();
+          setTemplateStatus('✓ ' + nombre + ' cargada', 'ready');
+          return;
+        }
+      } catch (err) {
+        // seguir intentando con el siguiente nombre
+      }
+    }
+    setTemplateStatus('No se pudo cargar automáticamente', 'error');
+    const note = document.getElementById('templateNote');
+    note.textContent = 'No encontré ninguno de estos nombres en la carpeta: ' + NOMBRES_PLANTILLA.join(', ') + '. Verifica el nombre exacto de tu archivo (incluida la extensión .xlsx) o usa "usar otro archivo" para seleccionarlo manualmente.';
+    note.classList.add('show');
+    document.getElementById('plantillaManual').classList.add('show');
+  }
+
+  document.getElementById('btnCambiarPlantilla').addEventListener('click', () => {
+    document.getElementById('plantillaManual').classList.add('show');
+    document.getElementById('plantillaExcel').click();
+  });
+
+  document.getElementById('plantillaExcel').addEventListener('change', function(){
+    if (!this.files.length) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      plantillaBuffer = e.target.result;
+      setTemplateStatus('✓ Plantilla: ' + this.files[0].name, 'ready');
+      document.getElementById('templateNote').classList.remove('show');
+    }.bind(this);
+    reader.readAsArrayBuffer(this.files[0]);
+  });
+
+  cargarPlantillaAutomatica();
+
+  document.getElementById('folio').addEventListener('input', function(){
+    document.getElementById('folioTag').textContent = this.value ? this.value : 'SIN FOLIO';
+  });
+
+  function setStatus(msg, kind){
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function nombreDeArchivoSeguro(texto) {
+    return texto.trim().replace(/[\\\/:*?"<>|]+/g, '-');
+  }
+
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? (el.value || "") : "";
+  }
+
+  document.getElementById('btnAddParte').addEventListener('click', function(){
+    const container = document.getElementById('partesContainer');
+    const row = document.createElement('div');
+    row.className = 'parte-row';
+    row.innerHTML = `
+      <div class="field"><label>Número de parte</label><input type="text" class="parte-num" placeholder="VS-S2T-10G="></div>
+      <div class="field"><label>Número de serie</label><input type="text" class="parte-serie" placeholder="SAL1917E18T"></div>
+      <div class="field">
+        <label>Movimiento</label>
+        <select class="parte-mov">
+          <option value="">-- Seleccionar --</option>
+          <option value="Instalado">Instalado</option>
+          <option value="Retirado">Retirado</option>
+          <option value="Rollback">Rollback</option>
+          <option value="No utilizado">No utilizado</option>
+          <option value="Resguardo del cliente">Resguardo del cliente</option>
+        </select>
+      </div>
+      <button type="button" class="btn-remove-parte" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(row);
+  });
+
+  let imagenes = { previo1: null, previo2: null, post1: null, post2: null };
+
+  function configurarImagen(btnId, inputId, tipo, gridId, emptyId) {
+    document.getElementById(btnId).addEventListener('click', () => document.getElementById(inputId).click());
+    document.getElementById(inputId).addEventListener('change', async function(){
+      if (!this.files.length) return;
+      const file = this.files[0];
+      try {
+        const procesada = await procesarImagen(file);
+        imagenes[tipo] = procesada;
+        renderImagenes(gridId, emptyId, tipo);
+      } catch (err) {
+        setStatus('⚠️ No se pudo leer la imagen: ' + file.name, 'err');
+      }
+      this.value = '';
+    });
+  }
+
+  configurarImagen('btnAgregarPrevio1', 'imgInputPrevio1', 'previo1', 'imgGridPrevio', 'imgEmptyPrevio');
+  configurarImagen('btnAgregarPrevio2', 'imgInputPrevio2', 'previo2', 'imgGridPrevio', 'imgEmptyPrevio');
+  configurarImagen('btnAgregarPost1', 'imgInputPost1', 'post1', 'imgGridPost', 'imgEmptyPost');
+  configurarImagen('btnAgregarPost2', 'imgInputPost2', 'post2', 'imgGridPost', 'imgEmptyPost');
+
+  function procesarImagen(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e){
+        const img = new Image();
+        img.onload = function(){
+          const canvas = document.createElement('canvas');
+          const maxWidth = 800;
+          const scale = Math.min(1, maxWidth / img.naturalWidth);
+          canvas.width = img.naturalWidth * scale;
+          canvas.height = img.naturalHeight * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve({
+            dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+            width: canvas.width,
+            height: canvas.height
+          });
+        };
+        img.onerror = () => reject(new Error('Formato no soportado'));
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderImagenes(gridId, emptyId, tipo) {
+    const grid = document.getElementById(gridId);
+    const empty = document.getElementById(emptyId);
+    grid.innerHTML = '';
+    const img = imagenes[tipo];
+    if (!img) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    const thumb = document.createElement('div');
+    thumb.className = 'img-thumb';
+    thumb.innerHTML = '<img src="' + img.dataUrl + '" alt=""><button type="button" class="rm" title="Quitar">×</button>';
+    thumb.querySelector('.rm').addEventListener('click', () => {
+      imagenes[tipo] = null;
+      renderImagenes(gridId, emptyId, tipo);
+    });
+    grid.appendChild(thumb);
+  }
+
+  // Función defensiva para reemplazar texto sin romper formatos ni hipervínculos
+  function reemplazarEnCelda(cell, datos, partes) {
+    if (!cell || !cell.value) return;
+
+    // 1. Texto plano
+    if (typeof cell.value === 'string') {
+      let newText = cell.value;
+      let changed = false;
+      for (const [key, value] of Object.entries(datos)) {
+        const tag = `{${key}}`;
+        if (newText.includes(tag)) {
+          newText = newText.split(tag).join(value);
+          changed = true;
+        }
+      }
+      partes.forEach((p, i) => {
+        const tags = [`{parte${i+1}_num}`, `{parte${i+1}_serie}`, `{parte${i+1}_mov}`];
+        const vals = [p.num, p.serie, p.mov];
+        tags.forEach((tag, idx) => {
+          if (newText.includes(tag)) {
+            newText = newText.split(tag).join(vals[idx]);
+            changed = true;
+          }
+        });
+      });
+      if (changed) cell.value = newText;
+      return;
+    }
+
+    // 2. Rich Text (Array de objetos { text: '...', font: {...} })
+    if (Array.isArray(cell.value)) {
+      let changed = false;
+      const newValue = cell.value.map(part => {
+        if (part && typeof part.text === 'string') {
+          let newText = part.text;
+          for (const [key, value] of Object.entries(datos)) {
+            const tag = `{${key}}`;
+            if (newText.includes(tag)) {
+              newText = newText.split(tag).join(value);
+              changed = true;
+            }
+          }
+          partes.forEach((p, i) => {
+            const tags = [`{parte${i+1}_num}`, `{parte${i+1}_serie}`, `{parte${i+1}_mov}`];
+            const vals = [p.num, p.serie, p.mov];
+            tags.forEach((tag, idx) => {
+              if (newText.includes(tag)) {
+                newText = newText.split(tag).join(vals[idx]);
+                changed = true;
+              }
+            });
+          });
+          return { ...part, text: newText };
+        }
+        return part;
+      });
+      if (changed) cell.value = newValue;
+      return;
+    }
+
+    // 3. Objeto con propiedad 'text' (ej. celdas con hipervínculo: { text: '...', hyperlink: '...' })
+    if (typeof cell.value === 'object' && cell.value.text && typeof cell.value.text === 'string') {
+      let newText = cell.value.text;
+      let changed = false;
+      for (const [key, value] of Object.entries(datos)) {
+        const tag = `{${key}}`;
+        if (newText.includes(tag)) {
+          newText = newText.split(tag).join(value);
+          changed = true;
+        }
+      }
+      if (changed) cell.value.text = newText; // Solo modificamos el texto, el hyperlink se mantiene intacto
+    }
+  }
+
+  async function insertarImagenEnTag(workbook, tag, imgData) {
+    if (!imgData) return;
+    
+    let targetCell = null;
+    let targetWorksheet = null;
+    
+    // Buscar en TODAS las hojas del workbook
+    workbook.eachSheet((worksheet) => {
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          if (!targetCell) { // Solo si aún no hemos encontrado la celda
+            // 1. Texto plano
+            if (cell.value && typeof cell.value === 'string' && cell.value.includes(tag)) {
+              targetCell = { row: rowNumber - 1, col: colNumber - 1 };
+              targetWorksheet = worksheet;
+              cell.value = "";
+            }
+            // 2. Rich Text (Array de objetos)
+            else if (Array.isArray(cell.value)) {
+              const found = cell.value.some(part => part.text && part.text.includes(tag));
+              if (found) {
+                targetCell = { row: rowNumber - 1, col: colNumber - 1 };
+                targetWorksheet = worksheet;
+                cell.value = [{ text: "", font: cell.value[0]?.font || {} }];
+              }
+            }
+            // 3. Objeto con hipervínculo
+            else if (cell.value && typeof cell.value === 'object' && cell.value.text && cell.value.text.includes(tag)) {
+              targetCell = { row: rowNumber - 1, col: colNumber - 1 };
+              targetWorksheet = worksheet;
+              cell.value.text = "";
+            }
+          }
+        });
+      });
+    });
+
+    if (targetCell && targetWorksheet && imgData) {
+      try {
+        const base64Data = imgData.dataUrl.split(',')[1];
+        const imageId = workbook.addImage({
+          base64: base64Data,
+          extension: 'jpeg',
+        });
+        
+        const maxWidth = 350;
+        const scale = Math.min(1, maxWidth / imgData.width);
+        const finalWidth = Math.max(20, Math.round(imgData.width * scale));
+        const finalHeight = Math.max(20, Math.round(imgData.height * scale));
+
+        targetWorksheet.addImage(imageId, {
+          tl: { col: targetCell.col, row: targetCell.row },
+          ext: { width: finalWidth, height: finalHeight }
+        });
+        
+        console.log(`✓ Imagen insertada en ${tag} (Hoja: ${targetWorksheet.name}, Fila: ${targetCell.row + 1}, Columna: ${targetCell.col + 1})`);
+      } catch (err) {
+        console.error("Error insertando imagen:", tag, err);
+      }
+    } else {
+      console.warn(`⚠️ No se encontró la etiqueta ${tag} en ninguna hoja`);
+    }
+  }
+
+  async function generarExcel() {
+    const btn = document.getElementById('btnGenerar');
+    if (!plantillaBuffer) {
+      setStatus('⚠️ No hay plantilla cargada. Selecciónala manualmente.', 'err');
+      return;
+    }
+
+    const folio = val('folio');
+    if (!folio) {
+      setStatus('⚠️ Ingresa el folio GS.', 'err');
+      document.getElementById('folio').focus();
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus('Procesando Excel e insertando imágenes...');
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(plantillaBuffer);
+
+      const partes = [];
+      document.querySelectorAll('.parte-row').forEach(row => {
+        const num = row.querySelector('.parte-num').value;
+        const serie = row.querySelector('.parte-serie').value;
+        const mov = row.querySelector('.parte-mov').value;
+        if (num || serie || mov) partes.push({ num, serie, mov });
+      });
+
+      const datos = {
+        nombre: val('nombre_idc'),
+        fecha: val('fecha'),
+        nombre_del_equipo: val('nombre_equipo'),
+        modelo: val('modelo'),
+        'hora de inicio': val('hora_inicio'),
+        folio: folio,
+        central: val('central'),
+        hubic_equipo: val('hubic_equipo'),
+        direccion: val('direccion'),
+        des_actividad: val('des_actividad'),
+        hora_de_llegada: val('hora_de_llegada'),
+        inicio_de_actividad: val('inicio_de_actividad'),
+        termino_de_la_actividad: val('termino_de_la_actividad'),
+        validacion: val('validacion'),
+        telefono: val('telefono'),
+        observaciones: val('observaciones'),
+        partes_danadas: val('partes_danadas'),
+        descripcion_previa: val('descripcion_previa'),
+        descripcion_porterior: val('descripcion_posterior'),
+        descripcion_posterior: val('descripcion_posterior')
+      };
+
+      // Reemplazo seguro en todas las celdas de todas las hojas
+      workbook.eachSheet((ws) => {
+        ws.eachRow((row, rowNumber) => {
+          row.eachCell((cell, colNumber) => {
+            reemplazarEnCelda(cell, datos, partes);
+          });
+        });
+      });
+
+      // Inserción segura de imágenes - busca en todas las hojas
+      await insertarImagenEnTag(workbook, '{imagen1_previo}', imagenes.previo1);
+      await insertarImagenEnTag(workbook, '{imagen2_previo}', imagenes.previo2);
+      await insertarImagenEnTag(workbook, '{imagen1_posterior}', imagenes.post1);
+      await insertarImagenEnTag(workbook, '{imagen2_posterior}', imagenes.post2);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreDeArchivoSeguro(folio) + '_Reporte_GSSC.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setStatus('✅ Excel generado exitosamente: ' + a.download, 'ok');
+    } catch (error) {
+      setStatus('❌ Error: ' + error.message, 'err');
+      console.error(error);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
+
