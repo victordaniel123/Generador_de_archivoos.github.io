@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -35,6 +36,18 @@
     background-size: 100% 32px;
     color: var(--ink);
     padding: 28px 16px 140px;
+  }
+
+ .btn-goto-dos{
+    font-family: var(--sans); font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--amber); border: none; border-radius: 6px; padding: 7px 12px;
+    cursor: pointer; white-space: nowrap; transition: background .15s ease, transform .1s ease;
+  }
+  .btn-goto-dos:hover{ background: #C4741F; }
+  .btn-goto-dos:active{ transform: translateY(1px); }
+  .card{
+    background: var(--paper); border: 1px solid var(--line); border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius); padding: 4px 22px 22px;
   }
 
   .wrap{ max-width: 640px; margin: 0 auto; }
@@ -244,34 +257,6 @@
     .timeline::before{ display:none; }
   }
 
-  /* ============================================================
-     Escritorio: más ancho, más columnas, mejor uso del espacio.
-     El celular sigue viéndose exactamente igual que antes.
-     ============================================================ */
-  @media (min-width: 900px){
-    body{ padding: 40px 24px 120px; }
-    .wrap{ max-width: 980px; }
-    .masthead{ padding: 22px 30px; }
-    .masthead .title{ font-size: 20px; }
-    .card{ padding: 4px 30px 30px; }
-
-    .grid{ grid-template-columns: repeat(3, 1fr); gap: 16px 16px; }
-
-    .timeline{ grid-template-columns: repeat(4, 1fr); gap: 14px; }
-
-    .img-grid{ grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
-
-    .actions{ justify-content: flex-end; }
-    .btn-generar{ max-width: 320px; }
-
-    .status{ max-width: 980px; text-align: right; }
-  }
-
-  @media (min-width: 1200px){
-    .wrap{ max-width: 1120px; }
-    .grid{ grid-template-columns: repeat(4, 1fr); }
-  }
-
   .actions{
     position: sticky; bottom: 14px; margin-top: 30px;
     display:flex; justify-content:center;
@@ -298,6 +283,7 @@
 
     <div class="masthead">
       <div class="title">Reporte <span>RIT</span></div>
+   <button type="button" class="btn-goto-dos" id="btnIrDos" title="Ir al generador de Word">Generar rcdt →</button>
       <div class="tag" id="folioTag">SIN FOLIO</div>
     </div>
 
@@ -433,6 +419,10 @@
     if (window.jspdf && window.jspdf.default && typeof window.jspdf.default.jsPDF === 'function') return window.jspdf.default.jsPDF;
     return null;
   }
+
+    document.getElementById('btnIrDos').addEventListener('click', () => {
+    window.location.href = 'excel.html';
+  });
 
   function verificarLibrerias() {
     const el = document.getElementById('libStatus');
