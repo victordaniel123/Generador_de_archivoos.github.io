@@ -151,14 +151,14 @@
     <div class="masthead">
       <div class="title">Reporte <span>GSSC</span> - Excel</div>
       <div class="masthead-right">
-        <button type="button" class="btn-goto-dos" id="btnIrDos" title="Ir al generador de Word">Generar rit →</button>
+        <button type="button" class="btn-goto-dos" id="btnIrDos" title="Ir al generador de Word">Generar Word →</button>
         <div class="tag" id="folioTag">SIN FOLIO</div>
       </div>
     </div>
 
     <div class="card">
       <div class="hint">
-        Esta herramienta genera el reporte <b>{...}</b> r.
+        Esta herramienta reemplaza las etiquetas <b>{...}</b> respetando los formatos y hipervínculos de tu Excel, e inserta las imágenes ancladas a la celda donde se encuentre la etiqueta.
       </div>
 
       <div class="template-box">
@@ -311,7 +311,7 @@
 
   // Botón hacia el generador de Word (dos.html), debe estar en la misma carpeta que este archivo
   document.getElementById('btnIrDos').addEventListener('click', () => {
-    window.location.href = 'index.html';
+    window.location.href = 'dos.html';
   });
 
   let plantillaBuffer = null;
@@ -334,21 +334,24 @@
   }
 
   async function cargarPlantillaAutomatica() {
+    console.log('[Plantilla] Buscando en:', window.location.href);
     for (const nombre of NOMBRES_PLANTILLA) {
+      const url = nombre;
       try {
-        const resp = await fetch(nombre, { cache: 'no-store' });
+        const resp = await fetch(url, { cache: 'no-store' });
+        console.log('[Plantilla] intento:', url, '→ HTTP', resp.status, resp.ok ? 'OK' : '');
         if (resp.ok) {
           plantillaBuffer = await resp.arrayBuffer();
           setTemplateStatus('✓ ' + nombre + ' cargada', 'ready');
           return;
         }
       } catch (err) {
-        // seguir intentando con el siguiente nombre
+        console.log('[Plantilla] intento:', url, '→ ERROR de red:', err.message);
       }
     }
     setTemplateStatus('No se pudo cargar automáticamente', 'error');
     const note = document.getElementById('templateNote');
-    note.textContent = 'No encontré ninguno de estos nombres en la carpeta: ' + NOMBRES_PLANTILLA.join(', ') + '. Verifica el nombre exacto de tu archivo (incluida la extensión .xlsx) o usa "usar otro archivo" para seleccionarlo manualmente.';
+    note.textContent = 'No encontré ninguno de estos nombres en la carpeta: ' + NOMBRES_PLANTILLA.join(', ') + '. Abre la consola (F12) para ver el código HTTP de cada intento. Verifica el nombre exacto de tu archivo (mayúsculas/minúsculas y extensión .xlsx incluidas) o usa "usar otro archivo" para seleccionarlo manualmente.';
     note.classList.add('show');
     document.getElementById('plantillaManual').classList.add('show');
   }
